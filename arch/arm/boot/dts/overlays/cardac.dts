@@ -1,0 +1,89 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2835", "brcm,bcm2708", "brcm,bcm2709";
+
+	fragment@0 {
+		target = <&i2s>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment@1 {
+		target = <&i2c1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			tas6424codec: tas6424@6a {
+				#sound-dai-cells = <0>;
+				compatible = "ti,tas6424";
+				reg = <0x6a>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&sound>;
+		__overlay__ {
+			compatible = "cardac,caramp";
+			i2s-controller = <&i2s>;
+			codec = <&tas6424codec>;
+			status = "okay";
+			clksel = <&gpio 16 0>;
+		};
+	};
+    fragment@3 {
+		// Configure the gpio pin controller
+		target = <&gpio>;
+		__overlay__ {
+        
+			pin_state: shutdown_button_pins {
+				brcm,pins = <25>; // gpio number
+				brcm,function = <0>; // 0 = input, 1 = output
+				brcm,pull = <2>; // 0 = none, 1 = pull down, 2 = pull up
+			};
+            
+			power_ctrl_pins: power_ctrl_pins {
+				brcm,pins = <8>;
+				brcm,function = <1>; // out
+			};
+		};
+	};
+	fragment@4 {
+    
+		target-path = "/soc";
+		__overlay__ {
+			shutdown_button {
+				
+				compatible = "gpio-keys";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&pin_state>;
+
+				status = "okay";
+
+				
+                button: shutdown {
+					label = "shutdown";
+					linux,code = <116>; // KEY_POWER
+					gpios = <&gpio 25 1>;
+				};
+			};
+		};
+    };
+    fragment@5 {
+		target-path = "/";
+		__overlay__ {
+			power_ctrl: power_ctrl {
+				compatible = "gpio-poweroff";
+				gpios = <&gpio 8 1>;
+				force;
+			};
+		};
+	};
+};
